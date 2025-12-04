@@ -53,9 +53,11 @@ const About = () => {
               estimated, and procured across India.
             </p>
 
-            <Button variant="hero" size="lg">
-              <Lightbulb className="w-5 h-5 mr-2" />
-              Explore Our Platform
+            <Button variant="hero" size="lg" asChild>
+              <a href="https://www.vcniti.com/">
+                <Lightbulb className="w-5 h-5 mr-2" />
+                Explore Our Platform
+              </a>
             </Button>
           </div>
         </section>

@@ -1,14 +1,65 @@
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Mail, MapPin, Clock, Send, MessageCircle } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
+const formSchema = z.object({
+  firstName: z.string().min(2, "First name is too short").max(50),
+  lastName: z.string().min(2, "Last name is too short").max(50),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+  subject: z.string().min(5, "Subject is too short"),
+  message: z.string().min(10, "Message is too short").max(500, "Message is too long"),
+});
+
 const Contact = () => {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      company: "",
+      subject: "",
+      message: "",
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const toastId = toast.loading("Sending your message...");
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message. Please try again later.");
+      }
+
+      toast.success("Message sent successfully!", { id: toastId });
+      form.reset();
+    } catch (error) {
+      console.error("Contact form error:", error);
+      toast.error(error instanceof Error ? error.message : "An unknown error occurred.", { id: toastId });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -49,7 +100,7 @@ const Contact = () => {
                   </p>
                 </div>
 
-                {/* Contact Details */}
+                {/* Contact Details Cards... */}
                 <div className="space-y-6">
                   <Card className="shadow-card">
                     <CardContent className="p-6">
@@ -85,41 +136,6 @@ const Contact = () => {
                       </div>
                     </CardContent>
                   </Card>
-
-                  <Card className="shadow-card">
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 gradient-hero rounded-full flex items-center justify-center flex-shrink-0">
-                          <Mail className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold mb-2">Email Address</h3>
-                          <p className="text-muted-foreground">info@vcniti.com</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            We'll respond within 24 hours
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-card">
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 gradient-hero rounded-full flex items-center justify-center flex-shrink-0">
-                          <Clock className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold mb-2">Business Hours</h3>
-                          <div className="text-muted-foreground space-y-1">
-                            <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
-                            <p>Saturday: 9:00 AM - 2:00 PM</p>
-                            <p>Sunday: Closed</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </div>
 
@@ -132,53 +148,113 @@ const Contact = () => {
                       Fill out the form below and we'll get back to you as soon as possible.
                     </p>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
-                        <Input id="firstName" placeholder="Enter your first name" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
-                        <Input id="lastName" placeholder="Enter your last name" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" type="email" placeholder="Enter your email address" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input id="phone" type="tel" placeholder="Enter your phone number" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="company">Company/Organization</Label>
-                      <Input id="company" placeholder="Enter your company name (optional)" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="subject">Subject</Label>
-                      <Input id="subject" placeholder="What is this regarding?" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="message">Message</Label>
-                      <Textarea 
-                        id="message" 
-                        placeholder="Tell us more about your project or inquiry..." 
-                        rows={4}
-                      />
-                    </div>
-
-                    <Button variant="hero" className="w-full" size="lg">
-                      <Send className="w-4 h-4 mr-2" />
-                      Send Message
-                    </Button>
-
-                    <div className="text-sm text-muted-foreground text-center">
+                  <CardContent>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="firstName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>First Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter your first name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="lastName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Last Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter your last name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email Address</FormLabel>
+                              <FormControl>
+                                <Input type="email" placeholder="Enter your email address" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone Number</FormLabel>
+                              <FormControl>
+                                <Input type="tel" placeholder="Enter your phone number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="company"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Company/Organization</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter your company name (optional)" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="subject"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Subject</FormLabel>
+                              <FormControl>
+                                <Input placeholder="What is this regarding?" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="message"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Message</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Tell us more about your project or inquiry..."
+                                  rows={4}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" variant="hero" className="w-full" size="lg" disabled={form.formState.isSubmitting}>
+                          <Send className="w-4 h-4 mr-2" />
+                          {form.formState.isSubmitting ? "Sending..." : "Send Message"}
+                        </Button>
+                      </form>
+                    </Form>
+                    <div className="text-sm text-muted-foreground text-center mt-6">
                       By submitting this form, you agree to our privacy policy and terms of service.
                     </div>
                   </CardContent>
@@ -187,26 +263,7 @@ const Contact = () => {
             </div>
           </div>
         </section>
-
-        {/* Quick Actions */}
-        <section className="py-16 px-4 bg-muted/30">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <h2 className="text-2xl font-bold">Ready to Get Started?</h2>
-            <p className="text-muted-foreground">
-              Try our free construction material estimator or explore our platform features.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="hero" size="lg" onClick={() => window.location.href = '/'}>
-                Try Free Estimator
-              </Button>
-              <Button variant="outline" size="lg">
-                Schedule a Demo
-              </Button>
-            </div>
-          </div>
-        </section>
       </main>
-
       <Footer />
     </div>
   );
